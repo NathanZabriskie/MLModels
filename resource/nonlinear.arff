@@ -1,0 +1,13 @@
+@relation linear
+@attribute 'x1' REAL 
+@attribute 'x2' REAL
+@attribute 'Class' { 'true', 'false' }
+@data
+-1,-1,'true'
+-1,1,'true'
+1,1,'true'
+1,-1,'true'
+0,0,'false'
+.5,.25,'false'
+-.75,-.75,'false'
+.33,.33,'false'
