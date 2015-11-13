@@ -45,7 +45,6 @@ public class PerceptronLearner extends SupervisedLearner
 		{
 			epochs++;
 			features.shuffle(rand,labels);
-			
 			for(int i = 0; i < features.rows(); i++)
 			{
 				withBias = ArrayUtils.Append(features.row(i),1.0);

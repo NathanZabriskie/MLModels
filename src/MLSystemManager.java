@@ -8,11 +8,15 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import learning_models.BaselineLearner;
+import learning_models.DecisionTree;
+import learning_models.KMeans;
 import learning_models.MultiPerceptronLearner;
 import learning_models.PerceptronLearner;
 import learning_models.SupervisedLearner;
 import learning_models.MultiLayerPerceptron;
 import utils.Matrix;
+import utils.MinMax;
+import utils.MinMaxMap;
 
 import java.io.File;
 
@@ -20,6 +24,7 @@ import java.io.File;
 public class MLSystemManager {
 	
 	private double learningRate = 0.1;
+	private MinMaxMap mmMap;
 	/**
 	 *  When you make a new learning algorithm, you should add a line for it to this method.
 	 */
@@ -29,8 +34,8 @@ public class MLSystemManager {
 		else if (model.equals("perceptron")) return new MultiPerceptronLearner(rand, learningRate);
 		else if (model.equals("multi_layer_perceptron")) return new MultiLayerPerceptron(rand, learningRate); 
 		// else if (model.equals("neuralnet")) return new NeuralNet(rand);
-		// else if (model.equals("decisiontree")) return new DecisionTree();
-		// else if (model.equals("knn")) return new InstanceBasedLearner();
+		else if (model.equals("decisiontree")) return new DecisionTree();
+		else if (model.equals("knn")) return new KMeans();
 		else throw new Exception("Unrecognized model: " + model);
 	}
 
@@ -59,7 +64,7 @@ public class MLSystemManager {
 		if (normalize)
 		{
 			System.out.println("Using normalized data\n");
-			data.normalize();
+			mmMap = data.normalize();
 		}
 
 		// Print some stats
@@ -94,7 +99,7 @@ public class MLSystemManager {
 			Matrix testData = new Matrix();
 			testData.loadArff(evalParameter);
 			if (normalize)
-				testData.normalize(); // BUG! This may normalize differently from the training data. It should use the same ranges for normalization!
+				testData.normalize(mmMap); // BUG! This may normalize differently from the training data. It should use the same ranges for normalization!
 
 			System.out.println("Calculating accuracy on separate test set...");
 			System.out.println("Test set name: " + evalParameter);

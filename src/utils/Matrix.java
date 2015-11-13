@@ -23,7 +23,7 @@ public class Matrix {
 	ArrayList< TreeMap<String, Integer> > m_str_to_enum;
 	ArrayList< TreeMap<Integer, String> > m_enum_to_str;
 
-	static double MISSING = Double.MAX_VALUE; // representation of missing values in the dataset
+	public static double MISSING = Double.MAX_VALUE; // representation of missing values in the dataset
 
 	// Creates a 0x0 matrix. You should call loadARFF or setSize next.
 	public Matrix() {}
@@ -45,6 +45,33 @@ public class Matrix {
 			m_attr_name.add(that.attrName(colStart + i));
 			m_str_to_enum.add(that.m_str_to_enum.get(colStart + i));
 			m_enum_to_str.add(that.m_enum_to_str.get(colStart + i));
+		}
+	}
+	
+	//Gets the specified rows in the other Matrix and creates a new Matrix
+	public Matrix (Matrix that, ArrayList<Integer> rows)
+	{
+		m_data = new ArrayList< double[] >();
+
+		for(Integer i : rows)
+		{
+			double[] rowSrc = that.row(i);
+			double[] rowDest = new double[rowSrc.length];
+			for(int j = 0; j < rowDest.length; j++)
+			{
+				rowDest[j] = rowSrc[j];
+			}
+			m_data.add(rowDest);
+		}
+		
+		m_attr_name = new ArrayList<String>();
+		m_str_to_enum = new ArrayList< TreeMap<String, Integer> >();
+		m_enum_to_str = new ArrayList< TreeMap<Integer, String> >();
+		for(int i = 0; i < that.cols(); i++)
+		{
+			m_attr_name.add(that.attrName(i));
+			m_str_to_enum.add(that.m_str_to_enum.get(i));
+			m_enum_to_str.add(that.m_enum_to_str.get(i));
 		}
 	}
 
@@ -315,7 +342,8 @@ public class Matrix {
 		return val;
 	}
 
-	public void normalize() {
+	public MinMaxMap normalize() {
+		MinMaxMap mm = new MinMaxMap();
 		for(int i = 0; i < cols(); i++) {
 			if(valueCount(i) == 0) {
 				double min = columnMin(i);
@@ -323,7 +351,26 @@ public class Matrix {
 				for(int j = 0; j < rows(); j++) {
 					double v = get(j, i);
 					if(v != MISSING)
+					{
 						set(j, i, (v - min) / (max - min));
+						mm.mmMap.put(i, new MinMax(min, max));
+					}
+				}
+			}
+		}
+		
+		return mm;
+	}
+	
+	public void normalize(MinMaxMap map) {
+		for(int i = 0; i < cols(); i++) {
+			if(valueCount(i) == 0) {
+				for(int j = 0; j < rows(); j++) {
+					double v = get(j, i);
+					if(v != MISSING)
+					{
+						set(j, i, (v - map.mmMap.get(i).min) / (map.mmMap.get(i).max - map.mmMap.get(i).min));
+					}
 				}
 			}
 		}

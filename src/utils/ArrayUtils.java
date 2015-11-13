@@ -76,6 +76,17 @@ public class ArrayUtils
 		return res;
 	}
 	
+	public static int Sum(int[] vector)
+	{
+		int res = 0;
+		for(int i = 0; i < vector.length; i++)
+		{
+			res += vector[i];
+		}
+		
+		return res;
+	}
+	
 	public static double Average(double[] vector)
 	{
 		double res = Sum(vector);
@@ -102,6 +113,71 @@ public class ArrayUtils
 		}
 		
 		return res;
+	}
+	
+	public static int Max(int[] vector)
+	{
+		int res = Integer.MIN_VALUE;
+		for(int i = 0; i < vector.length; i++)
+		{
+			res = Math.max(res, vector[i]);
+		}
+		
+		return res;
+	}
+	
+	public static int MaxIndex(int[] vector)
+	{
+		if(vector.length == 1)
+		{
+			return 0;
+		}
+		int max = Max(vector);
+		for(int i = 0; i < vector.length; i++)
+		{
+			if(vector[i] == max)
+			{
+				return i;
+			}
+		}
+		
+		return 0;
+	}
+	
+	public static int MinIndex(double[] vector)
+	{
+		if(vector.length == 1)
+		{
+			return 0;
+		}
+		double min = Min(vector);
+		for(int i = 0; i < vector.length; i++)
+		{
+			if(vector[i] == min)
+			{
+				return i;
+			}
+		}
+
+		return -1;
+	}
+	
+	public static int MaxIndex(double[] vector)
+	{
+		if(vector.length == 1)
+		{
+			return 0;
+		}
+		double max = Max(vector);
+		for(int i = 0; i < vector.length; i++)
+		{
+			if(vector[i] == max)
+			{
+				return i;
+			}
+		}
+
+		return -1;
 	}
 	
 	public static String GetString(double[] vector)

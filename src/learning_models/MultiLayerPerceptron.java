@@ -1,5 +1,7 @@
 package learning_models;
 
+import java.io.PrintWriter;
+import java.sql.Savepoint;
 import java.util.Random;
 
 import utils.ArrayUtils;
@@ -21,11 +23,16 @@ public class MultiLayerPerceptron extends SupervisedLearner
 	private int sinceImprovement = 0;
 	private int epochs = 0;
 	
-	private final double PERCENT_VALIDATION = 0.3; 
-	private final int[] HIDDEN_LAYERS = {10, 20, 10};
-	private final int STOP = 500;
-	
+	private final double PERCENT_VALIDATION = 0.3;
+	private double ALPHA = 0.9;
+	private final int[] HIDDEN_LAYERS = { 10, 10 };
+	private final int STOP = 100;
+
 	private enum nodeType { Output, Hidden };
+	
+	//Globals for saving out graphs
+	private final boolean SAVE_FILE = true;
+	private double[] outputs;
 	
 	public MultiLayerPerceptron(Random rand, double learningRate)
 	{
@@ -44,20 +51,54 @@ public class MultiLayerPerceptron extends SupervisedLearner
 		initLayers(features.cols(), labels.valueCount(0));
 		
 		double[] result = new double[1];
-		double accuracy = 0.;
+		double accuracy = 0.0;
+		double mse = 0.0;
 		epochs = 0;
+		StringBuilder s_MSE = new StringBuilder();
+		StringBuilder s_CA = new StringBuilder();
+		int num_correct = 0;
+		double last_t_mse;
+		double last_v_mse = 0;
 		do
 		{
-			epochs++;
 			sinceImprovement++;
+			num_correct = 0;
+			mse = 0.0;
 			trainingSet.shuffle(rand, trainingLabels);
 			for(int i = 0; i < trainingSet.rows(); i++)
 			{
 				predict(trainingSet.row(i), result);
+				if(SAVE_FILE)
+				{
+					if(Math.abs(result[0] - trainingLabels.row(i)[0]) < .01)
+					{
+						num_correct++;
+					}
+					for(int j = 0; j < layers[layers.length - 1].numNodes(); j++)
+					{
+						if(j == trainingLabels.row(i)[0])
+						{
+							mse += Math.pow(1 - outputs[j], 2);
+						}
+						else
+						{
+							mse += Math.pow(0 - outputs[j], 2);
+						}
+					}
+				}
 				updateWeights(trainingLabels.row(i)[0]);
 			}
 			
-			int num_correct = 0;
+			if(SAVE_FILE)
+			{
+				mse /= (double)trainingSet.rows();
+				accuracy = num_correct / (double)trainingSet.rows();
+				s_MSE.append(String.format("%d, %5.2f, %s%n", epochs, mse, "training"));
+				s_CA.append(String.format("%d, %5.2f, %s%n", epochs, accuracy * 100, "training"));
+			}
+			num_correct = 0;
+			last_t_mse = mse;
+			mse = 0.0;
 			for(int i = 0; i < validationSet.rows(); i++)
 			{
 				predict(validationSet.row(i), result);
@@ -65,9 +106,31 @@ public class MultiLayerPerceptron extends SupervisedLearner
 				{
 					num_correct++;
 				}
+				if(SAVE_FILE)
+				{
+					for(int j = 0; j < layers[layers.length - 1].numNodes(); j++)
+					{
+						if(j == validationLabels.row(i)[0])
+						{
+							mse += Math.pow(1 - outputs[j], 2);
+						}
+						else
+						{
+							mse += Math.pow(0 - outputs[j], 2);
+						}
+					}
+				}
 			}
 			
 			accuracy = num_correct / (double)validationSet.rows();
+			if(SAVE_FILE)
+			{
+				mse /= (double)validationSet.rows();
+				last_v_mse = mse;
+				s_MSE.append(String.format("%d, %5.2f, %s%n", epochs, mse, "validation"));
+				s_CA.append(String.format("%d, %5.2f, %s%n", epochs, accuracy * 100, "validation"));
+			}
+			epochs++;
 			if(accuracy > bestAccuracy)
 			{
 				sinceImprovement = 0;
@@ -85,8 +148,20 @@ public class MultiLayerPerceptron extends SupervisedLearner
 				}
 				break;
 			}
+			
 		} while(true);
+		System.out.println("Training MSE: " + last_t_mse);
+		System.out.println("Validation MSE: " + last_v_mse);
 		System.out.println("Trained in " + epochs + " epochs with an accuracy of " + accuracy + " on training set.");
+		if(SAVE_FILE)
+		{
+			/*PrintWriter out = new PrintWriter("resource\\mse_out_vowel_m.csv");
+			out.print(s_MSE.toString());
+			out.close();
+			out = new PrintWriter("resource\\acc_out_vowel_m.csv");
+			out.print(s_CA.toString());
+			out.close();*/
+		}
 	}
 
 	@Override
@@ -106,6 +181,11 @@ public class MultiLayerPerceptron extends SupervisedLearner
 				net = inputs[i];
 				labels[0] = (double)i;
 			}
+		}
+		
+		if(SAVE_FILE)
+		{
+			outputs = ArrayUtils.Copy(inputs);
 		}
 	}
 
@@ -197,6 +277,7 @@ public class MultiLayerPerceptron extends SupervisedLearner
 		private class Node
 		{
 			public double[] weights;
+			public double[] lastUpdate;
 			public double lastOutput = 0.0;
 			public double lastDelta = 0.0;
 			public nodeType type;
@@ -210,9 +291,11 @@ public class MultiLayerPerceptron extends SupervisedLearner
 				if(initialWeights == null)
 				{
 					weights = new double[numInputs];
+					lastUpdate = new double[numInputs];
 					for(int i = 0; i < weights.length; i++)
 					{
 						weights[i] = (rand.nextDouble() * 2) - 1.0;
+						lastUpdate[i] = 0.0;
 					}
 				} else
 				{
@@ -235,6 +318,7 @@ public class MultiLayerPerceptron extends SupervisedLearner
 				Node[] nextNodes = null;
 				double f_prime = lastOutput * (1 - lastOutput);
 				double delta = 0.0;
+				double delta_w;
 				if(type == nodeType.Output)
 				{
 					delta = (target - lastOutput) * f_prime;
@@ -251,10 +335,21 @@ public class MultiLayerPerceptron extends SupervisedLearner
 				
 				for(int i = 0; i < weights.length - 1; i++)
 				{
-					weights[i] += learningRate * lastNodes[i].lastOutput * delta;
+					if(ALPHA == 0.0)
+					{
+						delta_w = learningRate * lastNodes[i].lastOutput * delta;
+						weights[i] += delta_w + lastUpdate[i];
+						lastUpdate[i] = ALPHA * delta_w;
+					}
+					else
+					{
+						weights[i] += learningRate * lastNodes[i].lastOutput * delta;
+					}
 				}
 				
-				weights[weights.length - 1] += learningRate * delta;
+				delta_w = learningRate * delta;
+				weights[weights.length - 1] += delta_w + lastUpdate[weights.length - 1];
+				lastUpdate[weights.length - 1] = delta_w * ALPHA;
 				
 				lastDelta = delta;
 			}
